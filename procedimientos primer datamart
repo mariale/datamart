@@ -1,0 +1,100 @@
+create table centro_de_costo (
+id_centro_costo integer primary key,
+ubicacion varchar2(20)
+);
+
+create table solicitud (
+id_solicitud integer primary key,
+formato integer,
+estado varchar2(20)
+);
+create table tiempo (
+id_tiempo integer primary key,
+fecha_ini date,
+fecha_fin date
+);
+Procedimiento del llenado de la tabla del tiempo
+create or replace PROCEDURE LLENADO_tiempo1 AS
+v_fecha_i items_historicos.his_fecha_inicio%type;
+v_fecha_f items_historicos.his_fecha_fin%type;
+contador integer ;
+CURSOR c_tiempo  IS 
+(SELECT his_fecha_inicio, his_fecha_fin FROM items_historicos);
+BEGIN
+CONTADOR:=0;
+OPEN c_tiempo;
+LOOP
+FETCH c_tiempo INTO v_fecha_i, v_fecha_f ;
+EXIT WHEN c_tiempo%NOTFOUND;
+contador:=contador+1;
+ INSERT INTO tiempo(id_tiempo,fecha_ini,fecha_fin) VALUES (contador+1, v_fecha_i, v_fecha_f);
+END LOOP;
+ CLOSE c_tiempo;
+END LLENADO_tiempo1;
+
+execute  LLENADO_tiempo1()
+
+__-------------------------------------------------
+create or replace PROCEDURE LLENADO_solicitud AS
+v_fmo_codigo items_historicos.fmo_codigo%type;
+v_etu_nombre estatus.etu_nombre%type;
+contador integer ;
+CURSOR c_estatus  IS (SELECT etu.etu_nombre  FROM estatus etu join items_historicos his on etu.etu_codigo=his.etu_codigo);
+CURSOR c_items  IS (SELECT fmo_codigo  FROM items_historicos );
+BEGIN
+CONTADOR:=0;
+OPEN c_estatus;
+LOOP
+FETCH c_estatus INTO v_etu_nombre;
+EXIT WHEN c_estatus%NOTFOUND;
+OPEN c_items;
+LOOP
+FETCH c_items INTO v_fmo_codigo ;
+EXIT WHEN c_items%NOTFOUND;
+contador:=contador+1;
+ INSERT INTO solicitud (id_solicitud,formato,estado) VALUES (contador, v_fmo_codigo,v_etu_nombre);
+END LOOP;
+END LOOP;
+ CLOSE c_estatus;
+ CLOSE c_items;
+END LLENADO_solicitud;
+show error 
+
+execute  LLENADO_solicitud()
+
+create or replace PROCEDURE LLENADO_centro_costo AS
+v_id_cc centro_costos.ctr_id_centro%type;
+v_ubicacion centro_costos.ctr_descripcion%type;
+contador integer ;
+CURSOR c_cc  IS 
+(SELECT i.fmo_codigo,cc.ctr_descripcion 
+FROM items_historicos i join sds_formatos_fmo_data_table fmo
+on i.fmo_codigo=fmo.fmo_codigo
+join centro_costos cc
+on cc.ctr_id_centro=fmo.jef_infa_ctr_id_centro);
+BEGIN
+CONTADOR:=0;
+OPEN c_cc;
+LOOP
+FETCH c_cc INTO v_id_cc,v_ubicacion ;
+EXIT WHEN c_cc%NOTFOUND;
+ INSERT INTO centro_de_costo(id_cc,formato,descripcion) VALUES (contador,v_id_cc,v_ubicacion);
+END LOOP;
+ CLOSE c_cc;
+END LLENADO_centro_costo;
+
+execute  LLENADO_centro_costo()show error
+show error
+
+tiempo promedio por estado
+select s.estado, ( sum(nvl(to_number(to_char(t.fecha_fin,'DD')),0))- sum(to_number(to_char(t.fecha_ini,'DD'))))/ COUNT(t.fecha_fin) 
+from solicitud s join tiempo t
+on s.id_solicitud=t.id_tiempo
+group by s.estado
+cantidad de solicitudes al mes por estado
+select s.estado, to_char(t.fecha_ini,'month'),count(nvl(to_number(to_char(t.fecha_ini,'mm')),0)) 
+from solicitud s join tiempo t
+on s.id_solicitud=t.id_tiempo
+having s.estado='aprobado' or s.estado='listado' or s.estado='pausado'
+group by s.estado,to_char(t.fecha_ini,'month')
+order by 1,2
