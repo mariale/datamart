@@ -1,0 +1,18 @@
+create or replace 
+PROCEDURE LLENADO_tiempo2 AS
+v_fecha_i items_historicos.his_fecha_inicio%type;
+v_fecha_f items_historicos.his_fecha_fin%type;
+contador number(15);
+CURSOR c_tiempo  IS 
+(SELECT his_fecha_inicio, his_fecha_fin FROM items_historicos);
+BEGIN
+OPEN c_tiempo;
+LOOP
+FETCH c_tiempo INTO v_fecha_i, v_fecha_f ;
+EXIT WHEN c_tiempo%NOTFOUND;
+contador:=contador+1;
+ INSERT INTO tiempo VALUES (CONTADOR, v_fecha_i, v_fecha_f);
+END LOOP;
+ CLOSE c_tiempo;
+
+END LLENADO_tiempo;
